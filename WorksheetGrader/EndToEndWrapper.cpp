@@ -314,8 +314,9 @@ int EndToEndWrapper::run(int argc, char* argv[]) {
 			//imwrite("detection.jpg", out_img_detection);
 			//resize(out_img,out_img,Size(image.cols*scale_img,image.rows*scale_img));
 			namedWindow("recognition", WINDOW_NORMAL);
-			imshow("recognition", out_img);
-			waitKey(0);
+			imwrite("recognition.JPG", out_img); //save image
+			//imshow("recognition", out_img);
+			//waitKey(0);
 			//imwrite("recognition.jpg", out_img);
 			//imwrite("segmentation.jpg", out_img_segmentation);
 			//imwrite("decomposition.jpg", out_img_decomposition);
