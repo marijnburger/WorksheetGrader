@@ -8,7 +8,7 @@ EndToEndWrapper::~EndToEndWrapper()
 {
 }
 
-int EndToEndWrapper::run(int argc, char* argv[]) {
+int EndToEndWrapper::run(String filename) {
 	struct EndToEndFuncs
 	{
 		static size_t minimum(size_t x, size_t y, size_t z)
@@ -70,7 +70,7 @@ int EndToEndWrapper::run(int argc, char* argv[]) {
 			}
 		}
 		static bool   sort_by_lenght(const string &a, const string &b) { return (a.size()>b.size()); }
-		static int run_main(int argc, char* argv[])
+		static int run_main(int argc, const char* argv[])
 		{
 			//cout << endl << argv[0] << endl << endl;
 			cout << "A demo program of End-to-end Scene Text Detection and Recognition: " << endl;
@@ -313,8 +313,8 @@ int EndToEndWrapper::run(int argc, char* argv[]) {
 			//imshow("detection", out_img_detection);
 			//imwrite("detection.jpg", out_img_detection);
 			//resize(out_img,out_img,Size(image.cols*scale_img,image.rows*scale_img));
-			namedWindow("recognition", WINDOW_NORMAL);
-			imwrite("recognition.JPG", out_img); //save image
+			//namedWindow("recognition", WINDOW_NORMAL);
+			imwrite("recognition.JPG", out_img);
 			//imshow("recognition", out_img);
 			//waitKey(0);
 			//imwrite("recognition.jpg", out_img);
@@ -324,6 +324,8 @@ int EndToEndWrapper::run(int argc, char* argv[]) {
 			return 0;
 		}
 	};
-	EndToEndFuncs::run_main(argc, argv);
+	const char *arg1 = filename.c_str();
+	const char* argv[2] = { String("function call").c_str(), arg1 };
+	EndToEndFuncs::run_main(2, argv);
 	return 0;
 }

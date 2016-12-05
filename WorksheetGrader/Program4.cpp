@@ -4,16 +4,16 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include <iostream>
+#include <string>
 
 using namespace std;
 using namespace cv;
 using namespace cv::text;
 
-int main(int argc, char* argv[])
+int main()
 {
 	EndToEndWrapper e2e = EndToEndWrapper();
-	char* nothing[1];
-	e2e.run(0,nothing);
+	e2e.run("test5.JPG");
 	Mat output = imread("recognition.JPG");
 	imshow("recognition", output);
 	waitKey(0);
