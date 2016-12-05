@@ -151,6 +151,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Program4.cpp" />
+    <ClCompile Include="EndToEndWrapper.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="EndToEndWrapper.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
