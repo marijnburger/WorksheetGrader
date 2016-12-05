@@ -70,6 +70,9 @@ int EndToEndWrapper::run(String filename) {
 			}
 		}
 		static bool   sort_by_lenght(const string &a, const string &b) { return (a.size()>b.size()); }
+		//TODO:
+		// - get words out
+		// - slim down
 		static int run_main(int argc, const char* argv[])
 		{
 			//cout << endl << argv[0] << endl << endl;
