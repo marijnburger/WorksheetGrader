@@ -16,6 +16,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include <iostream>
+#include <vector>
 #include <string>
 
 using namespace std;
@@ -29,6 +30,5 @@ public:
 	~EndToEndWrapper();
 
 	//wraps 'end_to_end_recognition.cpp'
-	int run(String filename);
+	vector<String> run(String filename);
 };
-
