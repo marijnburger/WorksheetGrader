@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <math.h>
+#include <algorithm>
 
 using namespace std;
 using namespace cv;
@@ -23,18 +24,16 @@ void greenScreen(String foregroundFilename);
 
 void moreContrast(String filename);
 
+//void makeLowercase(String(&wordArray)[3]);
+
 // **** Main *******************************************************************
 int main()
 {
-	String testFilename = "Test5.JPG";
-
-
+	String testFilename = "test_B1_1.JPG";
 
 	//greenScreen(testFilename);
 
-	//moreContrast(testFilename);
-
-	
+	//moreContrast(testFilename);	
 
 	//Mat gradedPaper = imread("afterGreenScreen.JPG");
 	Mat gradedPaper = imread(testFilename);
@@ -49,18 +48,49 @@ int main()
 
 	imwrite("inverseImage.JPG", gradedPaper2);
 	vector<string> outputwords;
+	
 	EndToEndWrapper e2e = EndToEndWrapper();
 	outputwords = e2e.run("inverseImage.JPG");
 	Mat output = imread("recognition.JPG");
 	namedWindow("recognition", WINDOW_NORMAL);
 	imshow("recognition", output);
 	waitKey(0);
+	
 
 	//int numberOfWordsFound = outputwords.size();
 	
+	cout << outputwords[0] << endl;
+	cout << outputwords[1] << endl;
+	cout << outputwords[2] << endl;
 
-	String someAnswers[NUMBER_OF_QUESTIONS] = { "Hotel", "China", "Hello" };
-	String theSolution[NUMBER_OF_QUESTIONS] = { outputwords[0], outputwords[1], outputwords[2] };
+
+	String someAnswers[NUMBER_OF_QUESTIONS] = { outputwords[0], outputwords[1], outputwords[2] };
+	//String someAnswers[NUMBER_OF_QUESTIONS] = { "CHINA", "mars", "carbon" };
+	String theSolution[NUMBER_OF_QUESTIONS] = { "China", "mars", "carbon" };
+
+	char someChar;
+	String lowerWord;
+	for (int i = 0; i < NUMBER_OF_QUESTIONS; i++)
+	{
+		lowerWord = "";
+		for (int j = 0; j < someAnswers[i].length(); j++)
+		{
+			someChar = tolower(someAnswers[i][j]);
+			lowerWord += someChar;
+		}
+		someAnswers[i] = lowerWord;
+	}
+
+	for (int i = 0; i < NUMBER_OF_QUESTIONS; i++)
+	{
+		lowerWord = "";
+		for (int j = 0; j < theSolution[i].length(); j++)
+		{
+			someChar = tolower(theSolution[i][j]);
+			lowerWord += someChar;
+		}
+		theSolution[i] = lowerWord;
+	}
 
 	float theScore = compareAnswers(someAnswers, theSolution);
 
@@ -108,6 +138,14 @@ float compareAnswers(String* answers, String* solutions)
 	}
 	return count;
 }
+
+
+
+
+
+
+
+
 
 void greenScreen(String foregroundFilename)
 {
