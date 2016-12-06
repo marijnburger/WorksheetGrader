@@ -29,11 +29,12 @@ class EndToEndWrapper
 private:
 	const int thresh = 50, N = 11;
 public:
+	vector<string> foundWords;
 	EndToEndWrapper();
 	~EndToEndWrapper();
 
 	//wraps 'end_to_end_recognition.cpp'
-	vector<string> run(String filename);
+	static vector<string> run(String filename);
 
 	vector<string> runOCR(String filename);
 private:

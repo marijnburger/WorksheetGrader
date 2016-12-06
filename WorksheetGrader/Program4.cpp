@@ -50,7 +50,8 @@ int main()
 	vector<string> outputwords;
 	
 	EndToEndWrapper e2e = EndToEndWrapper();
-	outputwords = e2e.run("inverseImage.JPG");
+	e2e.run("inverseImage.JPG");
+	outputwords = e2e.foundWords;
 	Mat output = imread("recognition.JPG");
 	namedWindow("recognition", WINDOW_NORMAL);
 	imshow("recognition", output);
