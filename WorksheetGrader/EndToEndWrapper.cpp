@@ -87,7 +87,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 			else
 			{
     			cout << "    Usage: " << argv[0] << " <input_image> [<gt_word1> ... <gt_wordN>]" << endl;
-    			return(0);
+    			return vector<string>();
 			}
 
 			cout << "IMG_W=" << image.cols << endl;
