@@ -139,7 +139,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 			// Detect character groups
 			vector< vector<Vec2i> > nm_region_groups;
 			vector<Rect> nm_boxes;
-			erGrouping(image, channels, regions, nm_region_groups, nm_boxes, ERGROUPING_ORIENTATION_ANY, "trained_classifier_erGrouping.xml");
+			erGrouping(image, channels, regions, nm_region_groups, nm_boxes, ERGROUPING_ORIENTATION_HORIZ);
 			cout << "TIME_GROUPING = " << ((double)getTickCount() - t_g) * 1000 / getTickFrequency() << endl;
 
 
@@ -334,38 +334,15 @@ vector<string> EndToEndWrapper::run(String filename) {
 
 vector<string> EndToEndWrapper::runOCR(String filename) {
 	Mat image = imread(filename);
-	cout << "Parsing " << filename << "...";
+	cout << "Finding rectangles " << filename << "..." << endl;
 	vector<vector<Point>> squares;
 	findSquares(image, squares);
 	drawSquares(image, squares);
-	namedWindow("rectangles1.JPG", WINDOW_NORMAL);
-	imshow("rectangles1.JPG", image);
+	cout << "Found " << squares.size() << " rectangles." << endl;
+	namedWindow("rectangles.JPG", WINDOW_NORMAL);
+	imshow("rectangles.JPG", image);
 	imwrite("rectangles.JPG", image);
-	waitKey(0);
-	findSquares(image, squares);
-	drawSquares(image, squares);
-	namedWindow("rectangles2.JPG", WINDOW_NORMAL);
-	imshow("rectangles2.JPG", image);
-	imwrite("rectangles.JPG", image);
-	waitKey(0);
-	findSquares(image, squares);
-	drawSquares(image, squares);
-	namedWindow("rectangles3.JPG", WINDOW_NORMAL);
-	imshow("rectangles3.JPG", image);
-	imwrite("rectangles.JPG", image);
-	waitKey(0);
-	findSquares(image, squares);
-	drawSquares(image, squares);
-	namedWindow("rectangles4.JPG", WINDOW_NORMAL);
-	imshow("rectangles4.JPG", image);
-	imwrite("rectangles.JPG", image);
-	waitKey(0);
-	findSquares(image, squares);
-	drawSquares(image, squares);
-	namedWindow("rectangles5.JPG", WINDOW_NORMAL);
-	imshow("rectangles5.JPG", image);
-	imwrite("rectangles.JPG", image);
-	waitKey(0);
+
 	Ptr<OCRTesseract> ocr = OCRTesseract::create();
 	string output;
 	Mat out_img;
@@ -378,7 +355,7 @@ vector<string> EndToEndWrapper::runOCR(String filename) {
 	vector<string> words_detection;
 	vector<Rect> answers;
 	vector< vector<Vec2i> > answerlocations;
-	
+
 	for (int i = 0; i < (int)answers.size(); i++)
 	{
 		rectangle(out_img_detection, answers[i].tl(), answers[i].br(), Scalar(0, 255, 255), 3);
@@ -524,4 +501,90 @@ void EndToEndWrapper::findSquares(const Mat& image, vector<vector<Point> >& squa
 		int n = (int)squares[i].size();
 		polylines(image, &p, &n, 1, true, Scalar(0, 255, 0), 3, LINE_AA);
 	}
+}
+
+void EndToEndWrapper::greenScreen(String foregroundFilename)
+{
+	const int HIST_DIMENS_SIZE = 4; //size of cubic 3D histogram in one direction
+	const int COLOR_VALUES = 256; //number of values for any color channel {r, g, b}
+	const int BUCKET_SIZE = COLOR_VALUES / HIST_DIMENS_SIZE; //number of colors assigned
+															 //to each histogram bucket
+	const int COLOR_CHANNELS = 3; //number of channels in an RGB image
+
+	Mat foreground = imread(foregroundFilename);
+
+	//create 3D histogram of integers initialized to zero, dimensions are r, g, and b
+	int dims[] = { HIST_DIMENS_SIZE, HIST_DIMENS_SIZE, HIST_DIMENS_SIZE };
+	Mat hist(3, dims, CV_32S, Scalar::all(0));
+
+	//increment buckets in histogram based on image color data
+	int r, g, b;
+	uchar* fg_rowptr = nullptr;
+	int total_fg_channels = foreground.cols * COLOR_CHANNELS;
+	for (int row = 0; row < foreground.rows; row++) {
+		//get pointer to row in foreground image
+		fg_rowptr = foreground.ptr<uchar>(row);
+		//iterate over pixels (sets of 3 channels) and increment the appropriate bucket
+		for (int channel = 0; channel < total_fg_channels; channel += COLOR_CHANNELS) {
+			r = fg_rowptr[channel + 2] / BUCKET_SIZE;
+			g = fg_rowptr[channel + 1] / BUCKET_SIZE;
+			b = fg_rowptr[channel] / BUCKET_SIZE;
+			hist.at<int>(r, g, b)++;
+		}
+	}
+
+	//find cell with most votes (uses darker cell in a tie)
+	int max_r, max_g, max_b, max_votes, test;
+	max_r = max_g = max_b = max_votes = test = 0;
+	for (r = 0; r < HIST_DIMENS_SIZE; r++) {
+		for (g = 0; g < HIST_DIMENS_SIZE; g++) {
+			for (b = 0; b < HIST_DIMENS_SIZE; b++) {
+				test = hist.at<int>(r, g, b);
+				if (test > max_votes) {
+					max_votes = test;
+					max_r = r;
+					max_g = g;
+					max_b = b;
+				}
+			}
+		}
+	}
+
+	//calculate color w/ most votes based on cell count
+	int bg_r = max_r * BUCKET_SIZE + BUCKET_SIZE / 2;
+	int bg_g = max_g * BUCKET_SIZE + BUCKET_SIZE / 2;
+	int bg_b = max_b * BUCKET_SIZE + BUCKET_SIZE / 2;
+
+	// **** PART 1B: replace most common color w/ background image *************
+	//setup
+	fg_rowptr = nullptr;
+	uchar* bg_rowptr = nullptr;
+
+	//iterate over entire foreground image
+	for (int row = 0; row < foreground.rows; row++) {
+		//get pointer to row in foreground image and corresponding row
+		//in background image; handles background images that are smaller
+		//than their foreground images (handles rows here, columns later)
+		fg_rowptr = foreground.ptr<uchar>(row);
+		//iterate over pixels (sets of 3 channels) and increment the appropriate bucket
+		for (int channel = 0; channel < total_fg_channels; channel += COLOR_CHANNELS) {
+			//if pixel in foreground image is within BUCKET_SIZE of the calculated
+			//'most common color' in all color bands
+			if (fg_rowptr[channel] >= bg_b - BUCKET_SIZE &&
+				fg_rowptr[channel] <= bg_b + BUCKET_SIZE && //is blue within range
+				fg_rowptr[channel + 1] >= bg_g - BUCKET_SIZE &&
+				fg_rowptr[channel + 1] <= bg_g + BUCKET_SIZE && //is green within range
+				fg_rowptr[channel + 2] >= bg_r - BUCKET_SIZE &&
+				fg_rowptr[channel + 2] <= bg_r + BUCKET_SIZE) { //is red within range
+
+				//set foreground pixel to white
+				fg_rowptr[channel] = 255;
+				fg_rowptr[channel + 1] = 255;
+				fg_rowptr[channel + 2] = 255;
+			}
+		}
+	}
+
+	// create output file for green-screen effect
+	imwrite("afterGreenScreen.jpg", foreground);
 }
