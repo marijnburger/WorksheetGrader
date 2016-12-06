@@ -8,7 +8,7 @@ EndToEndWrapper::~EndToEndWrapper()
 {
 }
 
-int EndToEndWrapper::run(String filename) {
+vector<string> EndToEndWrapper::run(String filename) {
 	struct EndToEndFuncs
 	{
 		static size_t minimum(size_t x, size_t y, size_t z)
@@ -70,7 +70,10 @@ int EndToEndWrapper::run(String filename) {
 			}
 		}
 		static bool   sort_by_lenght(const string &a, const string &b) { return (a.size()>b.size()); }
-		static int run_main(int argc, const char* argv[])
+		//TODO:
+		// - get words out
+		// - slim down
+		static vector<string> run_main(int argc, const char* argv[])
 		{
 			//cout << endl << argv[0] << endl << endl;
 			cout << "A demo program of End-to-end Scene Text Detection and Recognition: " << endl;
@@ -78,18 +81,14 @@ int EndToEndWrapper::run(String filename) {
 			cout << "Neumann L., Matas J.: Real-Time Scene Text Localization and Recognition, CVPR 2012" << endl << endl;
 
 			Mat image;
-			/*
+
 			if (argc>1)
 			image = imread(argv[1]);
 			else
 			{
-			cout << "    Usage: " << argv[0] << " <input_image> [<gt_word1> ... <gt_wordN>]" << endl;
-			return(0);
+    			cout << "    Usage: " << argv[0] << " <input_image> [<gt_word1> ... <gt_wordN>]" << endl;
+    			return vector<string>();
 			}
-
-			*/
-
-			image = imread("test5.JPG");
 
 			cout << "IMG_W=" << image.cols << endl;
 			cout << "IMG_H=" << image.rows << endl;
@@ -162,7 +161,6 @@ int EndToEndWrapper::run(String filename) {
 			vector<string> words_detection;
 
 			t_r = (double)getTickCount();
-
 			for (int i = 0; i<(int)nm_boxes.size(); i++)
 			{
 
@@ -198,6 +196,7 @@ int EndToEndWrapper::run(String filename) {
 						isRepetitive(words[j]))
 						continue;
 					words_detection.push_back(words[j]);
+
 					rectangle(out_img, boxes[j].tl(), boxes[j].br(), Scalar(255, 0, 255), 3);
 					Size word_size = getTextSize(words[j], FONT_HERSHEY_SIMPLEX, (double)scale_font, (int)(3 * scale_font), NULL);
 					rectangle(out_img, boxes[j].tl() - Point(3, word_size.height + 3), boxes[j].tl() + Point(word_size.width, 0), Scalar(255, 0, 255), -1);
@@ -209,9 +208,9 @@ int EndToEndWrapper::run(String filename) {
 
 			cout << "TIME_OCR = " << ((double)getTickCount() - t_r) * 1000 / getTickFrequency() << endl;
 
-
+/* CHANGED CODE HERE **********************************************************/
 			/* Recognition evaluation with (approximate) hungarian matching and edit distances */
-
+            /*
 			if (argc>2)
 			{
 				int num_gt_characters = 0;
@@ -307,6 +306,8 @@ int EndToEndWrapper::run(String filename) {
 				}
 			}
 
+            */
+/* END OF CHANGED CODE ********************************************************/
 
 
 			//resize(out_img_detection,out_img_detection,Size(image.cols*scale_img,image.rows*scale_img));
@@ -320,12 +321,12 @@ int EndToEndWrapper::run(String filename) {
 			//imwrite("recognition.jpg", out_img);
 			//imwrite("segmentation.jpg", out_img_segmentation);
 			//imwrite("decomposition.jpg", out_img_decomposition);
-
-			return 0;
+/* CHANGED CODE HERE **********************************************************/
+			return words_detection;
+/* END OF CHANGED CODE ********************************************************/
 		}
 	};
 	const char *arg1 = filename.c_str();
 	const char* argv[2] = { String("function call").c_str(), arg1 };
-	EndToEndFuncs::run_main(2, argv);
-	return 0;
+	return EndToEndFuncs::run_main(2, argv);
 }
