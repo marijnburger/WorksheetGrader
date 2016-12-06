@@ -26,7 +26,6 @@ void moreContrast(String filename);
 
 //void makeLowercase(String(&wordArray)[3]);
 
-
 // **** Main *******************************************************************
 int main()
 {
