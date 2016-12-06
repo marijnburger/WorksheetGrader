@@ -92,8 +92,6 @@ int main()
 		theSolution[i] = lowerWord;
 	}
 
-
-
 	float theScore = compareAnswers(someAnswers, theSolution);
 
 //	Mat gradedPaper = imread("test5.JPG");
