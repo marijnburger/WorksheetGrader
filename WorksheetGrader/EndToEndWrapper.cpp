@@ -8,7 +8,7 @@ EndToEndWrapper::~EndToEndWrapper()
 {
 }
 
-vector<String> EndToEndWrapper::run(String filename) {
+vector<string> EndToEndWrapper::run(String filename) {
 	struct EndToEndFuncs
 	{
 		static size_t minimum(size_t x, size_t y, size_t z)
@@ -73,7 +73,7 @@ vector<String> EndToEndWrapper::run(String filename) {
 		//TODO:
 		// - get words out
 		// - slim down
-		static vector<String> run_main(int argc, const char* argv[])
+		static vector<string> run_main(int argc, const char* argv[])
 		{
 			//cout << endl << argv[0] << endl << endl;
 			cout << "A demo program of End-to-end Scene Text Detection and Recognition: " << endl;
@@ -87,7 +87,7 @@ vector<String> EndToEndWrapper::run(String filename) {
 			else
 			{
     			cout << "    Usage: " << argv[0] << " <input_image> [<gt_word1> ... <gt_wordN>]" << endl;
-    			return(0);
+    			return vector<string>();
 			}
 
 			cout << "IMG_W=" << image.cols << endl;

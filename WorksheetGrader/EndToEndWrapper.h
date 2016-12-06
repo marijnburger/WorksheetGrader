@@ -30,5 +30,5 @@ public:
 	~EndToEndWrapper();
 
 	//wraps 'end_to_end_recognition.cpp'
-	vector<String> run(String filename);
+	vector<string> run(String filename);
 };
