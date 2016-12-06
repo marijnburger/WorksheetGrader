@@ -83,11 +83,11 @@ vector<string> EndToEndWrapper::run(String filename) {
 			Mat image;
 
 			if (argc>1)
-			image = imread(argv[1]);
+				image = imread(argv[1]);
 			else
 			{
-    			cout << "    Usage: " << argv[0] << " <input_image> [<gt_word1> ... <gt_wordN>]" << endl;
-    			return vector<string>();
+				cout << "    Usage: " << argv[0] << " <input_image> [<gt_word1> ... <gt_wordN>]" << endl;
+				return vector<string>();
 			}
 
 			cout << "IMG_W=" << image.cols << endl;
@@ -208,106 +208,96 @@ vector<string> EndToEndWrapper::run(String filename) {
 
 			cout << "TIME_OCR = " << ((double)getTickCount() - t_r) * 1000 / getTickFrequency() << endl;
 
-/* CHANGED CODE HERE **********************************************************/
+			/* CHANGED CODE HERE **********************************************************/
 			/* Recognition evaluation with (approximate) hungarian matching and edit distances */
-            /*
+			/*
 			if (argc>2)
 			{
-				int num_gt_characters = 0;
-				vector<string> words_gt;
-				for (int i = 2; i<argc; i++)
-				{
-					string s = string(argv[i]);
-					if (s.size() > 0)
-					{
-						words_gt.push_back(string(argv[i]));
-						//cout << " GT word " << words_gt[words_gt.size()-1] << endl;
-						num_gt_characters += (int)(words_gt[words_gt.size() - 1].size());
-					}
-				}
-
-				if (words_detection.empty())
-				{
-					//cout << endl << "number of characters in gt = " << num_gt_characters << endl;
-					cout << "TOTAL_EDIT_DISTANCE = " << num_gt_characters << endl;
-					cout << "EDIT_DISTANCE_RATIO = 1" << endl;
-				}
-				else
-				{
-
-					sort(words_gt.begin(), words_gt.end(), sort_by_lenght);
-
-					int max_dist = 0;
-					vector< vector<int> > assignment_mat;
-					for (int i = 0; i<(int)words_gt.size(); i++)
-					{
-						vector<int> assignment_row(words_detection.size(), 0);
-						assignment_mat.push_back(assignment_row);
-						for (int j = 0; j<(int)words_detection.size(); j++)
-						{
-							assignment_mat[i][j] = (int)(edit_distance(words_gt[i], words_detection[j]));
-							max_dist = max(max_dist, assignment_mat[i][j]);
-						}
-					}
-
-					vector<int> words_detection_matched;
-
-					int total_edit_distance = 0;
-					int tp = 0, fp = 0, fn = 0;
-					for (int search_dist = 0; search_dist <= max_dist; search_dist++)
-					{
-						for (int i = 0; i<(int)assignment_mat.size(); i++)
-						{
-							int min_dist_idx = (int)distance(assignment_mat[i].begin(),
-								min_element(assignment_mat[i].begin(), assignment_mat[i].end()));
-							if (assignment_mat[i][min_dist_idx] == search_dist)
-							{
-								//cout << " GT word \"" << words_gt[i] << "\" best match \"" << words_detection[min_dist_idx] << "\" with dist " << assignment_mat[i][min_dist_idx] << endl;
-								if (search_dist == 0)
-									tp++;
-								else { fp++; fn++; }
-
-								total_edit_distance += assignment_mat[i][min_dist_idx];
-								words_detection_matched.push_back(min_dist_idx);
-								words_gt.erase(words_gt.begin() + i);
-								assignment_mat.erase(assignment_mat.begin() + i);
-								for (int j = 0; j<(int)assignment_mat.size(); j++)
-								{
-									assignment_mat[j][min_dist_idx] = INT_MAX;
-								}
-								i--;
-							}
-						}
-					}
-
-					for (int j = 0; j<(int)words_gt.size(); j++)
-					{
-						//cout << " GT word \"" << words_gt[j] << "\" no match found" << endl;
-						fn++;
-						total_edit_distance += (int)words_gt[j].size();
-					}
-					for (int j = 0; j<(int)words_detection.size(); j++)
-					{
-						if (find(words_detection_matched.begin(), words_detection_matched.end(), j) == words_detection_matched.end())
-						{
-							//cout << " Detection word \"" << words_detection[j] << "\" no match found" << endl;
-							fp++;
-							total_edit_distance += (int)words_detection[j].size();
-						}
-					}
-
-
-					//cout << endl << "number of characters in gt = " << num_gt_characters << endl;
-					cout << "TOTAL_EDIT_DISTANCE = " << total_edit_distance << endl;
-					cout << "EDIT_DISTANCE_RATIO = " << (float)total_edit_distance / num_gt_characters << endl;
-					cout << "TP = " << tp << endl;
-					cout << "FP = " << fp << endl;
-					cout << "FN = " << fn << endl;
-				}
+			int num_gt_characters = 0;
+			vector<string> words_gt;
+			for (int i = 2; i<argc; i++)
+			{
+			string s = string(argv[i]);
+			if (s.size() > 0)
+			{
+			words_gt.push_back(string(argv[i]));
+			//cout << " GT word " << words_gt[words_gt.size()-1] << endl;
+			num_gt_characters += (int)(words_gt[words_gt.size() - 1].size());
 			}
-
-            */
-/* END OF CHANGED CODE ********************************************************/
+			}
+			if (words_detection.empty())
+			{
+			//cout << endl << "number of characters in gt = " << num_gt_characters << endl;
+			cout << "TOTAL_EDIT_DISTANCE = " << num_gt_characters << endl;
+			cout << "EDIT_DISTANCE_RATIO = 1" << endl;
+			}
+			else
+			{
+			sort(words_gt.begin(), words_gt.end(), sort_by_lenght);
+			int max_dist = 0;
+			vector< vector<int> > assignment_mat;
+			for (int i = 0; i<(int)words_gt.size(); i++)
+			{
+			vector<int> assignment_row(words_detection.size(), 0);
+			assignment_mat.push_back(assignment_row);
+			for (int j = 0; j<(int)words_detection.size(); j++)
+			{
+			assignment_mat[i][j] = (int)(edit_distance(words_gt[i], words_detection[j]));
+			max_dist = max(max_dist, assignment_mat[i][j]);
+			}
+			}
+			vector<int> words_detection_matched;
+			int total_edit_distance = 0;
+			int tp = 0, fp = 0, fn = 0;
+			for (int search_dist = 0; search_dist <= max_dist; search_dist++)
+			{
+			for (int i = 0; i<(int)assignment_mat.size(); i++)
+			{
+			int min_dist_idx = (int)distance(assignment_mat[i].begin(),
+			min_element(assignment_mat[i].begin(), assignment_mat[i].end()));
+			if (assignment_mat[i][min_dist_idx] == search_dist)
+			{
+			//cout << " GT word \"" << words_gt[i] << "\" best match \"" << words_detection[min_dist_idx] << "\" with dist " << assignment_mat[i][min_dist_idx] << endl;
+			if (search_dist == 0)
+			tp++;
+			else { fp++; fn++; }
+			total_edit_distance += assignment_mat[i][min_dist_idx];
+			words_detection_matched.push_back(min_dist_idx);
+			words_gt.erase(words_gt.begin() + i);
+			assignment_mat.erase(assignment_mat.begin() + i);
+			for (int j = 0; j<(int)assignment_mat.size(); j++)
+			{
+			assignment_mat[j][min_dist_idx] = INT_MAX;
+			}
+			i--;
+			}
+			}
+			}
+			for (int j = 0; j<(int)words_gt.size(); j++)
+			{
+			//cout << " GT word \"" << words_gt[j] << "\" no match found" << endl;
+			fn++;
+			total_edit_distance += (int)words_gt[j].size();
+			}
+			for (int j = 0; j<(int)words_detection.size(); j++)
+			{
+			if (find(words_detection_matched.begin(), words_detection_matched.end(), j) == words_detection_matched.end())
+			{
+			//cout << " Detection word \"" << words_detection[j] << "\" no match found" << endl;
+			fp++;
+			total_edit_distance += (int)words_detection[j].size();
+			}
+			}
+			//cout << endl << "number of characters in gt = " << num_gt_characters << endl;
+			cout << "TOTAL_EDIT_DISTANCE = " << total_edit_distance << endl;
+			cout << "EDIT_DISTANCE_RATIO = " << (float)total_edit_distance / num_gt_characters << endl;
+			cout << "TP = " << tp << endl;
+			cout << "FP = " << fp << endl;
+			cout << "FN = " << fn << endl;
+			}
+			}
+			*/
+			/* END OF CHANGED CODE ********************************************************/
 
 
 			//resize(out_img_detection,out_img_detection,Size(image.cols*scale_img,image.rows*scale_img));
@@ -321,9 +311,9 @@ vector<string> EndToEndWrapper::run(String filename) {
 			//imwrite("recognition.jpg", out_img);
 			//imwrite("segmentation.jpg", out_img_segmentation);
 			//imwrite("decomposition.jpg", out_img_decomposition);
-/* CHANGED CODE HERE **********************************************************/
+			/* CHANGED CODE HERE **********************************************************/
 			return words_detection;
-/* END OF CHANGED CODE ********************************************************/
+			/* END OF CHANGED CODE ********************************************************/
 		}
 	};
 	const char *arg1 = filename.c_str();
