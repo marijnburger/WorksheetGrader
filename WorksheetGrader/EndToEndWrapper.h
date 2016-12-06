@@ -18,6 +18,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <math.h>
 
 using namespace std;
 using namespace cv;
@@ -25,10 +26,17 @@ using namespace cv::text;
 
 class EndToEndWrapper
 {
+private:
+	const int thresh = 50, N = 11;
 public:
 	EndToEndWrapper();
 	~EndToEndWrapper();
 
 	//wraps 'end_to_end_recognition.cpp'
 	vector<string> run(String filename);
+
+	vector<string> runOCR(String filename);
+	double angle(Point pt1, Point pt2, Point pt0);
+	void findSquares(const Mat& image, vector<vector<Point> >& squares);
+	void drawSquares(Mat& image, const vector<vector<Point> >& squares);
 };

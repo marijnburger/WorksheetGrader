@@ -139,7 +139,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 			// Detect character groups
 			vector< vector<Vec2i> > nm_region_groups;
 			vector<Rect> nm_boxes;
-			erGrouping(image, channels, regions, nm_region_groups, nm_boxes, ERGROUPING_ORIENTATION_HORIZ);
+			erGrouping(image, channels, regions, nm_region_groups, nm_boxes, ERGROUPING_ORIENTATION_ANY, "trained_classifier_erGrouping.xml");
 			cout << "TIME_GROUPING = " << ((double)getTickCount() - t_g) * 1000 / getTickFrequency() << endl;
 
 
@@ -209,8 +209,9 @@ vector<string> EndToEndWrapper::run(String filename) {
 			cout << "TIME_OCR = " << ((double)getTickCount() - t_r) * 1000 / getTickFrequency() << endl;
 
 /* CHANGED CODE HERE **********************************************************/
+/* CHANGES: commented out, unused by our implementation
 			/* Recognition evaluation with (approximate) hungarian matching and edit distances */
-            /*
+			/*
 			if (argc>2)
 			{
 				int num_gt_characters = 0;
@@ -329,4 +330,198 @@ vector<string> EndToEndWrapper::run(String filename) {
 	const char *arg1 = filename.c_str();
 	const char* argv[2] = { String("function call").c_str(), arg1 };
 	return EndToEndFuncs::run_main(2, argv);
+}
+
+vector<string> EndToEndWrapper::runOCR(String filename) {
+	Mat image = imread(filename);
+	cout << "Parsing " << filename << "...";
+	vector<vector<Point>> squares;
+	findSquares(image, squares);
+	drawSquares(image, squares);
+	namedWindow("rectangles1.JPG", WINDOW_NORMAL);
+	imshow("rectangles1.JPG", image);
+	imwrite("rectangles.JPG", image);
+	waitKey(0);
+	findSquares(image, squares);
+	drawSquares(image, squares);
+	namedWindow("rectangles2.JPG", WINDOW_NORMAL);
+	imshow("rectangles2.JPG", image);
+	imwrite("rectangles.JPG", image);
+	waitKey(0);
+	findSquares(image, squares);
+	drawSquares(image, squares);
+	namedWindow("rectangles3.JPG", WINDOW_NORMAL);
+	imshow("rectangles3.JPG", image);
+	imwrite("rectangles.JPG", image);
+	waitKey(0);
+	findSquares(image, squares);
+	drawSquares(image, squares);
+	namedWindow("rectangles4.JPG", WINDOW_NORMAL);
+	imshow("rectangles4.JPG", image);
+	imwrite("rectangles.JPG", image);
+	waitKey(0);
+	findSquares(image, squares);
+	drawSquares(image, squares);
+	namedWindow("rectangles5.JPG", WINDOW_NORMAL);
+	imshow("rectangles5.JPG", image);
+	imwrite("rectangles.JPG", image);
+	waitKey(0);
+	Ptr<OCRTesseract> ocr = OCRTesseract::create();
+	string output;
+	Mat out_img;
+	Mat out_img_detection;
+	Mat out_img_segmentation = Mat::zeros(image.rows + 2, image.cols + 2, CV_8UC1);
+	image.copyTo(out_img);
+	image.copyTo(out_img_detection);
+	float scale_img = 600.f / image.rows;
+	float scale_font = (float)(2 - scale_img) / 1.4f;
+	vector<string> words_detection;
+	vector<Rect> answers;
+	vector< vector<Vec2i> > answerlocations;
+	
+	for (int i = 0; i < (int)answers.size(); i++)
+	{
+		rectangle(out_img_detection, answers[i].tl(), answers[i].br(), Scalar(0, 255, 255), 3);
+
+		Mat group_img = Mat::zeros(image.rows + 2, image.cols + 2, CV_8UC1);
+		Mat group_segmentation;
+		group_img.copyTo(group_segmentation);
+		//image(answers[i]).copyTo(group_img);
+		group_img(answers[i]).copyTo(group_img);
+		copyMakeBorder(group_img, group_img, 15, 15, 15, 15, BORDER_CONSTANT, Scalar(0));
+
+		vector<Rect>   boxes;
+		vector<string> words;
+		vector<float>  confidences;
+		ocr->run(group_img, output, &boxes, &words, &confidences, OCR_LEVEL_WORD);
+
+		output.erase(remove(output.begin(), output.end(), '\n'), output.end());
+		//cout << "OCR output = \"" << output << "\" lenght = " << output.size() << endl;
+
+
+		for (int j = 0; j < (int)boxes.size(); j++)
+		{
+			boxes[j].x += answers[i].x - 15;
+			boxes[j].y += answers[i].y - 15;
+
+			//cout << "  word = " << words[j] << "\t confidence = " << confidences[j] << endl;
+			if ((words[j].size() < 2) || (confidences[j] < 51) ||
+				((words[j].size() == 2) && (words[j][0] == words[j][1])) ||
+				((words[j].size() < 4) && (confidences[j] < 60)))
+				continue;
+			words_detection.push_back(words[j]);
+			rectangle(out_img, boxes[j].tl(), boxes[j].br(), Scalar(255, 0, 255), 3);
+			Size word_size = getTextSize(words[j], FONT_HERSHEY_SIMPLEX, (double)scale_font, (int)(3 * scale_font), NULL);
+			rectangle(out_img, boxes[j].tl() - Point(3, word_size.height + 3), boxes[j].tl() + Point(word_size.width, 0), Scalar(255, 0, 255), -1);
+			putText(out_img, words[j], boxes[j].tl() - Point(1, 1), FONT_HERSHEY_SIMPLEX, scale_font, Scalar(255, 255, 255), (int)(3 * scale_font));
+			out_img_segmentation = out_img_segmentation | group_segmentation;
+		}
+	}
+	return words_detection;
+}
+
+// helper function:
+// finds a cosine of angle between vectors
+// from pt0->pt1 and from pt0->pt2
+double EndToEndWrapper::angle(Point pt1, Point pt2, Point pt0)
+{
+	double dx1 = pt1.x - pt0.x;
+	double dy1 = pt1.y - pt0.y;
+	double dx2 = pt2.x - pt0.x;
+	double dy2 = pt2.y - pt0.y;
+	return (dx1*dx2 + dy1*dy2) / sqrt((dx1*dx1 + dy1*dy1)*(dx2*dx2 + dy2*dy2) + 1e-10);
+}
+
+
+// returns sequence of squares detected on the image.
+// the sequence is stored in the specified memory storage
+void EndToEndWrapper::findSquares(const Mat& image, vector<vector<Point> >& squares)
+{
+	squares.clear();
+
+	Mat pyr, timg, gray0(image.size(), CV_8U), gray;
+
+	// down-scale and upscale the image to filter out the noise
+	pyrDown(image, pyr, Size(image.cols / 2, image.rows / 2));
+	pyrUp(pyr, timg, image.size());
+	vector<vector<Point> > contours;
+
+	// find squares in every color plane of the image
+	for (int c = 0; c < 3; c++)
+	{
+		int ch[] = { c, 0 };
+		mixChannels(&timg, 1, &gray0, 1, ch, 1);
+
+		// try several threshold levels
+		for (int l = 0; l < N; l++)
+		{
+			// hack: use Canny instead of zero threshold level.
+			// Canny helps to catch squares with gradient shading
+			if (l == 0)
+			{
+				// apply Canny. Take the upper threshold from slider
+				// and set the lower to 0 (which forces edges merging)
+				Canny(gray0, gray, 0, thresh, 5);
+				// dilate canny output to remove potential
+				// holes between edge segments
+				dilate(gray, gray, Mat(), Point(-1, -1));
+			}
+			else
+			{
+				// apply threshold if l!=0:
+				//     tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
+				gray = gray0 >= (l + 1) * 255 / N;
+			}
+
+			// find contours and store them all as a list
+			findContours(gray, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
+
+			vector<Point> approx;
+
+			// test each contour
+			for (size_t i = 0; i < contours.size(); i++)
+			{
+				// approximate contour with accuracy proportional
+				// to the contour perimeter
+				approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*0.02, true);
+
+				// square contours should have 4 vertices after approximation
+				// relatively large area (to filter out noisy contours)
+				// and be convex.
+				// Note: absolute value of an area is used because
+				// area may be positive or negative - in accordance with the
+				// contour orientation
+				if (approx.size() == 4 &&
+					fabs(contourArea(Mat(approx))) > 1000 &&
+					isContourConvex(Mat(approx)))
+				{
+					double maxCosine = 0;
+
+					for (int j = 2; j < 5; j++)
+					{
+						// find the maximum cosine of the angle between joint edges
+						double cosine = fabs(angle(approx[j % 4], approx[j - 2], approx[j - 1]));
+						maxCosine = MAX(maxCosine, cosine);
+					}
+
+					// if cosines of all angles are small
+					// (all angles are ~90 degree) then write quandrange
+					// vertices to resultant sequence
+					if (maxCosine < 0.3)
+						squares.push_back(approx);
+				}
+			}
+		}
+	}
+}
+
+// the function draws all the squares in the image
+ void EndToEndWrapper::drawSquares(Mat& image, const vector<vector<Point> >& squares)
+{
+	for (size_t i = 0; i < squares.size(); i++)
+	{
+		const Point* p = &squares[i][0];
+		int n = (int)squares[i].size();
+		polylines(image, &p, &n, 1, true, Scalar(0, 255, 0), 3, LINE_AA);
+	}
 }
