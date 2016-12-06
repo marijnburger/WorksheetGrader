@@ -43,6 +43,7 @@ int main()
 
 	Size kSize(7, 7);
 	GaussianBlur(gradedPaper, gradedPaper, kSize, 2.0, 2.0);
+//	GaussianBlur(gradedPaper, gradedPaper, kSize, 2.0, 2.0);
 
 	bitwise_not(gradedPaper, gradedPaper2);  // Color inversion
 
@@ -54,10 +55,12 @@ int main()
 	namedWindow("recognition", WINDOW_NORMAL);
 	imshow("recognition", output);
 	waitKey(0);
+
+	//int numberOfWordsFound = outputwords.size();
 	
 
-	String someAnswers[NUMBER_OF_QUESTIONS] = { "Hotel", "Yes", "false" };
-	String theSolution[NUMBER_OF_QUESTIONS] = { "Hotel", "Yes", "false" };
+	String someAnswers[NUMBER_OF_QUESTIONS] = { "Hotel", "China", "Hello" };
+	String theSolution[NUMBER_OF_QUESTIONS] = { outputwords[0], outputwords[1], outputwords[2] };
 
 	float theScore = compareAnswers(someAnswers, theSolution);
 
