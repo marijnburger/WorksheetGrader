@@ -81,18 +81,14 @@ vector<String> EndToEndWrapper::run(String filename) {
 			cout << "Neumann L., Matas J.: Real-Time Scene Text Localization and Recognition, CVPR 2012" << endl << endl;
 
 			Mat image;
-			/*
+
 			if (argc>1)
 			image = imread(argv[1]);
 			else
 			{
-			cout << "    Usage: " << argv[0] << " <input_image> [<gt_word1> ... <gt_wordN>]" << endl;
-			return(0);
+    			cout << "    Usage: " << argv[0] << " <input_image> [<gt_word1> ... <gt_wordN>]" << endl;
+    			return(0);
 			}
-
-			*/
-
-			image = imread("test5.JPG");
 
 			cout << "IMG_W=" << image.cols << endl;
 			cout << "IMG_H=" << image.rows << endl;
