@@ -9,35 +9,12 @@ EndToEndWrapper::~EndToEndWrapper()
 }
 
 vector<string> EndToEndWrapper::run(String filename) {
+
 	struct EndToEndFuncs
 	{
 		static size_t minimum(size_t x, size_t y, size_t z)
 		{
 			return x < y ? min(x, z) : min(y, z);
-		}
-		static size_t edit_distance(const string& A, const string& B)
-		{
-			size_t NA = A.size();
-			size_t NB = B.size();
-
-			vector< vector<size_t> > M(NA + 1, vector<size_t>(NB + 1));
-
-			for (size_t a = 0; a <= NA; ++a)
-				M[a][0] = a;
-
-			for (size_t b = 0; b <= NB; ++b)
-				M[0][b] = b;
-
-			for (size_t a = 1; a <= NA; ++a)
-				for (size_t b = 1; b <= NB; ++b)
-				{
-					size_t x = M[a - 1][b] + 1;
-					size_t y = M[a][b - 1] + 1;
-					size_t z = M[a - 1][b - 1] + (A[a - 1] == B[b - 1] ? 0 : 1);
-					M[a][b] = minimum(x, y, z);
-				}
-
-			return M[A.size()][B.size()];
 		}
 		static bool isRepetitive(const string& s)
 		{
@@ -70,11 +47,17 @@ vector<string> EndToEndWrapper::run(String filename) {
 			}
 		}
 		static bool   sort_by_lenght(const string &a, const string &b) { return (a.size()>b.size()); }
-		//TODO:
-		// - get words out
-		// - slim down
+		
 		static vector<string> run_main(int argc, const char* argv[])
 		{
+			// Redirect cout & cerr
+			streambuf* oldCoutStreamBuf = cout.rdbuf();
+			ostringstream strCout;
+			cout.rdbuf(strCout.rdbuf());
+			streambuf* oldCerrStreamBuf = cerr.rdbuf();
+			ostringstream strCerr;
+			cerr.rdbuf(strCerr.rdbuf());
+
 			//cout << endl << argv[0] << endl << endl;
 			cout << "A demo program of End-to-end Scene Text Detection and Recognition: " << endl;
 			cout << "Shows the use of the Tesseract OCR API with the Extremal Region Filter algorithm described in:" << endl;
@@ -143,7 +126,6 @@ vector<string> EndToEndWrapper::run(String filename) {
 			cout << "TIME_GROUPING = " << ((double)getTickCount() - t_g) * 1000 / getTickFrequency() << endl;
 
 
-
 			/*Text Recognition (OCR)*/
 
 			double t_r = (double)getTickCount();
@@ -157,13 +139,12 @@ vector<string> EndToEndWrapper::run(String filename) {
 			image.copyTo(out_img);
 			image.copyTo(out_img_detection);
 			float scale_img = 600.f / image.rows;
-			float scale_font = (float)(2 - scale_img) / 1.4f;
+			float scale_font = 1; // (float)(2 - scale_img) / 1.4f;
 			vector<string> words_detection;
 
 			t_r = (double)getTickCount();
 			for (int i = 0; i<(int)nm_boxes.size(); i++)
 			{
-
 				rectangle(out_img_detection, nm_boxes[i].tl(), nm_boxes[i].br(), Scalar(0, 255, 255), 3);
 
 				Mat group_img = Mat::zeros(image.rows + 2, image.cols + 2, CV_8UC1);
@@ -192,8 +173,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 					//cout << "  word = " << words[j] << "\t confidence = " << confidences[j] << endl;
 					if ((words[j].size() < 2) || (confidences[j] < 51) ||
 						((words[j].size() == 2) && (words[j][0] == words[j][1])) ||
-						((words[j].size()< 4) && (confidences[j] < 60)) ||
-						isRepetitive(words[j]))
+						((words[j].size()< 4) && (confidences[j] < 60)))
 						continue;
 					words_detection.push_back(words[j]);
 
@@ -209,6 +189,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 			cout << "TIME_OCR = " << ((double)getTickCount() - t_r) * 1000 / getTickFrequency() << endl;
 
 			/* CHANGED CODE HERE **********************************************************/
+			/* CHANGES: commented out, unused by our implementation
 			/* Recognition evaluation with (approximate) hungarian matching and edit distances */
 			/*
 			if (argc>2)
@@ -225,6 +206,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 			num_gt_characters += (int)(words_gt[words_gt.size() - 1].size());
 			}
 			}
+
 			if (words_detection.empty())
 			{
 			//cout << endl << "number of characters in gt = " << num_gt_characters << endl;
@@ -233,7 +215,9 @@ vector<string> EndToEndWrapper::run(String filename) {
 			}
 			else
 			{
+
 			sort(words_gt.begin(), words_gt.end(), sort_by_lenght);
+
 			int max_dist = 0;
 			vector< vector<int> > assignment_mat;
 			for (int i = 0; i<(int)words_gt.size(); i++)
@@ -246,7 +230,9 @@ vector<string> EndToEndWrapper::run(String filename) {
 			max_dist = max(max_dist, assignment_mat[i][j]);
 			}
 			}
+
 			vector<int> words_detection_matched;
+
 			int total_edit_distance = 0;
 			int tp = 0, fp = 0, fn = 0;
 			for (int search_dist = 0; search_dist <= max_dist; search_dist++)
@@ -261,6 +247,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 			if (search_dist == 0)
 			tp++;
 			else { fp++; fn++; }
+
 			total_edit_distance += assignment_mat[i][min_dist_idx];
 			words_detection_matched.push_back(min_dist_idx);
 			words_gt.erase(words_gt.begin() + i);
@@ -273,6 +260,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 			}
 			}
 			}
+
 			for (int j = 0; j<(int)words_gt.size(); j++)
 			{
 			//cout << " GT word \"" << words_gt[j] << "\" no match found" << endl;
@@ -288,6 +276,8 @@ vector<string> EndToEndWrapper::run(String filename) {
 			total_edit_distance += (int)words_detection[j].size();
 			}
 			}
+
+
 			//cout << endl << "number of characters in gt = " << num_gt_characters << endl;
 			cout << "TOTAL_EDIT_DISTANCE = " << total_edit_distance << endl;
 			cout << "EDIT_DISTANCE_RATIO = " << (float)total_edit_distance / num_gt_characters << endl;
@@ -296,6 +286,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 			cout << "FN = " << fn << endl;
 			}
 			}
+
 			*/
 			/* END OF CHANGED CODE ********************************************************/
 
@@ -305,18 +296,248 @@ vector<string> EndToEndWrapper::run(String filename) {
 			//imwrite("detection.jpg", out_img_detection);
 			//resize(out_img,out_img,Size(image.cols*scale_img,image.rows*scale_img));
 			//namedWindow("recognition", WINDOW_NORMAL);
-			imwrite("recognition.JPG", out_img);
+			imwrite(argv[1], out_img);
 			//imshow("recognition", out_img);
 			//waitKey(0);
 			//imwrite("recognition.jpg", out_img);
 			//imwrite("segmentation.jpg", out_img_segmentation);
 			//imwrite("decomposition.jpg", out_img_decomposition);
 			/* CHANGED CODE HERE **********************************************************/
+			// Restore old cout & cerr
+			cout.rdbuf(oldCoutStreamBuf);
+			cerr.rdbuf(oldCerrStreamBuf);
 			return words_detection;
 			/* END OF CHANGED CODE ********************************************************/
 		}
 	};
 	const char *arg1 = filename.c_str();
-	const char* argv[2] = { String("function call").c_str(), arg1 };
+	const char* argv[2] = { String("function-call").c_str(), arg1 };
 	return EndToEndFuncs::run_main(2, argv);
+}
+
+vector<string> EndToEndWrapper::runOCR(String filename) {
+	cout << "Load " << filename << "..." << endl;
+	Mat rectImage = imread(filename, CV_LOAD_IMAGE_GRAYSCALE); //for finding rectangles
+	Mat image = imread(filename, CV_LOAD_IMAGE_COLOR); //for finding text
+
+	// **** Rectangle Recognition *************************************************
+	cout << "Optimizing image for rectangle recognition:" << endl;
+	//blur
+	cout << "    Applying Gaussian blur..." << endl;
+	Size kSize(15, 15);
+	GaussianBlur(rectImage, rectImage, kSize, 2.0, 2.0);
+	//threshold
+	cout << "    Performing adaptive thresholding..." << endl;
+	adaptiveThreshold(rectImage, rectImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY, 15, -2);
+	cvtColor(rectImage, rectImage, CV_GRAY2BGR);
+
+	//find squares
+	cout << "Finding rectangles in " << filename << "..." << endl;
+	vector<vector<Point>> squares;
+	findSquares(rectImage, squares);
+
+	// **** Discard Outlier Contours **********************************************
+	cout << "Locating answer rectangles within recognition set..." << endl;
+	size_t num_squares = squares.size();
+	vector<double> areas(num_squares);
+	//find all contour areas
+	for (int i = 0; i < num_squares; i++) {
+		areas[i] = contourArea(squares[i]);
+	}
+
+	//find low/high boundaries for area (middle 60% is kept)
+	vector<double> sortedareas = areas;
+	sort(sortedareas.begin(), sortedareas.end());
+	int twentypercent = num_squares / 5;
+	double low, high;
+	low = sortedareas[twentypercent]; //excluded if < low
+	high = sortedareas[num_squares - twentypercent]; //excluded if >= high
+
+	//keep valid squares
+	vector<vector<Point>> trimmedsquares = vector<vector<Point>>();
+	for (int i = 0; i < num_squares; i++)
+		if (areas[i] >= low && areas[i] < high) 
+			trimmedsquares.push_back(squares[i]);
+	squares = trimmedsquares;
+	//draw squares
+	//cout << "Outlining answer rectangles..." << endl;
+	//drawSquares(image, squares);
+
+	// **** OCR *******************************************************************
+	cout << "Initializing Tesseract optical character recogntion..." << endl;
+
+	//setup
+	Ptr<OCRTesseract> ocr = OCRTesseract::create();
+	string output;
+	Mat out_img;
+	Mat out_img_detection;
+	Mat out_img_segmentation = Mat::zeros(image.rows + 2, image.cols + 2, CV_8UC1);
+	image.copyTo(out_img);
+	image.copyTo(out_img_detection);
+	float scale_img = 600.f / image.rows;
+	float scale_font = (float)(2 - scale_img) / 1.4f;
+	vector<string> words_detection;
+
+	//optimize image for OCR
+	cout << "Optimizing image for optical character recognition..." << endl;
+	kSize = Size(7, 7);
+	GaussianBlur(out_img, out_img, kSize, 2.0, 2.0);
+	bitwise_not(out_img, out_img);  // Color inversion
+
+	cout << "Reformatting search areas..." << endl;
+	//initialize answers
+	vector<Rect> answers;
+	vector<Point> cur;
+	Rect currentRect, testRect;
+	Point tl;
+	int height, width;
+	bool insert = false;
+	for (int i = 0; i < squares.size(); i++) {
+		cur = squares[i];
+		currentRect = boundingRect(cur);
+		if (answers.size() == 0) {
+			answers.push_back(currentRect);
+		}
+		else {
+			insert = true;
+			for (int j = 0; j < answers.size(); j++) {
+				testRect = answers[j] & currentRect;
+				if (testRect.area() > 0) insert = false;
+			}
+			if (insert) {
+				answers.push_back(currentRect);
+				insert = false;
+			}
+		}
+
+	}
+
+	cout << "Performing optical character recognition:" << endl;
+	Mat input;
+	String inputfile, returnWord;
+	ostringstream oss;
+	std::cout << oss.str();
+	for (int i = answers.size() - 1; i >= 0; i--) {
+		input = out_img(answers[i]);
+		resize(input, input, Size(0,0), 2.0, 2.0);
+		oss << "input" << answers.size() - 1 - i << ".JPG";
+		inputfile = oss.str();
+		cout << "    Evaluating " << inputfile << "..." << endl;
+		imwrite(inputfile, input);
+		vector<string> result = run(inputfile);
+		returnWord = "";
+		for (int part = 0; part < result.size(); part++)
+			returnWord += result[part];
+		words_detection.push_back(returnWord);
+		oss.clear();//clear any bits set
+		oss.str(std::string());
+	}
+	
+	return words_detection;
+}
+
+// helper function:
+// finds a cosine of angle between vectors
+// from pt0->pt1 and from pt0->pt2
+double EndToEndWrapper::angle(Point pt1, Point pt2, Point pt0)
+{
+	double dx1 = pt1.x - pt0.x;
+	double dy1 = pt1.y - pt0.y;
+	double dx2 = pt2.x - pt0.x;
+	double dy2 = pt2.y - pt0.y;
+	return (dx1*dx2 + dy1*dy2) / sqrt((dx1*dx1 + dy1*dy1)*(dx2*dx2 + dy2*dy2) + 1e-10);
+}
+
+
+// returns sequence of squares detected on the image.
+// the sequence is stored in the specified memory storage
+void EndToEndWrapper::findSquares(const Mat& image, vector<vector<Point> >& squares)
+{
+	squares.clear();
+
+	Mat pyr, timg, gray0(image.size(), CV_8U), gray;
+
+	// down-scale and upscale the image to filter out the noise
+	pyrDown(image, pyr, Size(image.cols / 2, image.rows / 2));
+	pyrUp(pyr, timg, image.size());
+	vector<vector<Point> > contours;
+
+	// find squares in every color plane of the image
+	for (int c = 0; c < 3; c++)
+	{
+		int ch[] = { c, 0 };
+		mixChannels(&timg, 1, &gray0, 1, ch, 1);
+
+		// try several threshold levels
+		for (int l = 0; l < N; l++)
+		{
+			// hack: use Canny instead of zero threshold level.
+			// Canny helps to catch squares with gradient shading
+			if (l == 0)
+			{
+				// apply Canny. Take the upper threshold from slider
+				// and set the lower to 0 (which forces edges merging)
+				Canny(gray0, gray, 0, thresh, 5);
+				// dilate canny output to remove potential
+				// holes between edge segments
+				dilate(gray, gray, Mat(), Point(-1, -1));
+			}
+			else
+			{
+				// apply threshold if l!=0:
+				//     tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
+				gray = gray0 >= (l + 1) * 255 / N;
+			}
+
+			// find contours and store them all as a list
+			findContours(gray, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
+
+			vector<Point> approx;
+
+			// test each contour
+			for (size_t i = 0; i < contours.size(); i++)
+			{
+				// approximate contour with accuracy proportional
+				// to the contour perimeter
+				approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*0.02, true);
+
+				// square contours should have 4 vertices after approximation
+				// relatively large area (to filter out noisy contours)
+				// and be convex.
+				// Note: absolute value of an area is used because
+				// area may be positive or negative - in accordance with the
+				// contour orientation
+				if (approx.size() == 4 &&
+					fabs(contourArea(Mat(approx))) > 1000 &&
+					isContourConvex(Mat(approx)))
+				{
+					double maxCosine = 0;
+
+					for (int j = 2; j < 5; j++)
+					{
+						// find the maximum cosine of the angle between joint edges
+						double cosine = fabs(angle(approx[j % 4], approx[j - 2], approx[j - 1]));
+						maxCosine = MAX(maxCosine, cosine);
+					}
+
+					// if cosines of all angles are small
+					// (all angles are ~90 degree) then write quandrange
+					// vertices to resultant sequence
+					if (maxCosine < 0.3)
+						squares.push_back(approx);
+				}
+			}
+		}
+	}
+}
+
+// the function draws all the squares in the image
+void EndToEndWrapper::drawSquares(Mat& image, const vector<vector<Point> >& squares)
+{
+	for (size_t i = 0; i < squares.size(); i++)
+	{
+		const Point* p = &squares[i][0];
+		int n = (int)squares[i].size();
+		polylines(image, &p, &n, 1, true, Scalar(0, 255, 0), 3, LINE_AA);
+	}
 }
