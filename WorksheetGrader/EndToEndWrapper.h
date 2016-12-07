@@ -40,5 +40,4 @@ private:
 	double angle(Point pt1, Point pt2, Point pt0);
 	void findSquares(const Mat& image, vector<vector<Point> >& squares);
 	void drawSquares(Mat& image, const vector<vector<Point> >& squares);
-	void EndToEndWrapper::greenScreen(String foregroundFilename);
 };

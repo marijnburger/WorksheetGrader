@@ -9,35 +9,12 @@ EndToEndWrapper::~EndToEndWrapper()
 }
 
 vector<string> EndToEndWrapper::run(String filename) {
+
 	struct EndToEndFuncs
 	{
 		static size_t minimum(size_t x, size_t y, size_t z)
 		{
 			return x < y ? min(x, z) : min(y, z);
-		}
-		static size_t edit_distance(const string& A, const string& B)
-		{
-			size_t NA = A.size();
-			size_t NB = B.size();
-
-			vector< vector<size_t> > M(NA + 1, vector<size_t>(NB + 1));
-
-			for (size_t a = 0; a <= NA; ++a)
-				M[a][0] = a;
-
-			for (size_t b = 0; b <= NB; ++b)
-				M[0][b] = b;
-
-			for (size_t a = 1; a <= NA; ++a)
-				for (size_t b = 1; b <= NB; ++b)
-				{
-					size_t x = M[a - 1][b] + 1;
-					size_t y = M[a][b - 1] + 1;
-					size_t z = M[a - 1][b - 1] + (A[a - 1] == B[b - 1] ? 0 : 1);
-					M[a][b] = minimum(x, y, z);
-				}
-
-			return M[A.size()][B.size()];
 		}
 		static bool isRepetitive(const string& s)
 		{
@@ -70,11 +47,17 @@ vector<string> EndToEndWrapper::run(String filename) {
 			}
 		}
 		static bool   sort_by_lenght(const string &a, const string &b) { return (a.size()>b.size()); }
-		//TODO:
-		// - get words out
-		// - slim down
+		
 		static vector<string> run_main(int argc, const char* argv[])
 		{
+			// Redirect cout & cerr
+			streambuf* oldCoutStreamBuf = cout.rdbuf();
+			ostringstream strCout;
+			cout.rdbuf(strCout.rdbuf());
+			streambuf* oldCerrStreamBuf = cerr.rdbuf();
+			ostringstream strCerr;
+			cerr.rdbuf(strCerr.rdbuf());
+
 			//cout << endl << argv[0] << endl << endl;
 			cout << "A demo program of End-to-end Scene Text Detection and Recognition: " << endl;
 			cout << "Shows the use of the Tesseract OCR API with the Extremal Region Filter algorithm described in:" << endl;
@@ -143,7 +126,6 @@ vector<string> EndToEndWrapper::run(String filename) {
 			cout << "TIME_GROUPING = " << ((double)getTickCount() - t_g) * 1000 / getTickFrequency() << endl;
 
 
-
 			/*Text Recognition (OCR)*/
 
 			double t_r = (double)getTickCount();
@@ -157,13 +139,12 @@ vector<string> EndToEndWrapper::run(String filename) {
 			image.copyTo(out_img);
 			image.copyTo(out_img_detection);
 			float scale_img = 600.f / image.rows;
-			float scale_font = (float)(2 - scale_img) / 1.4f;
+			float scale_font = 1; // (float)(2 - scale_img) / 1.4f;
 			vector<string> words_detection;
 
 			t_r = (double)getTickCount();
 			for (int i = 0; i<(int)nm_boxes.size(); i++)
 			{
-
 				rectangle(out_img_detection, nm_boxes[i].tl(), nm_boxes[i].br(), Scalar(0, 255, 255), 3);
 
 				Mat group_img = Mat::zeros(image.rows + 2, image.cols + 2, CV_8UC1);
@@ -192,8 +173,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 					//cout << "  word = " << words[j] << "\t confidence = " << confidences[j] << endl;
 					if ((words[j].size() < 2) || (confidences[j] < 51) ||
 						((words[j].size() == 2) && (words[j][0] == words[j][1])) ||
-						((words[j].size()< 4) && (confidences[j] < 60)) ||
-						isRepetitive(words[j]))
+						((words[j].size()< 4) && (confidences[j] < 60)))
 						continue;
 					words_detection.push_back(words[j]);
 
@@ -316,37 +296,48 @@ vector<string> EndToEndWrapper::run(String filename) {
 			//imwrite("detection.jpg", out_img_detection);
 			//resize(out_img,out_img,Size(image.cols*scale_img,image.rows*scale_img));
 			//namedWindow("recognition", WINDOW_NORMAL);
-			imwrite("recognition.JPG", out_img);
+			imwrite(argv[1], out_img);
 			//imshow("recognition", out_img);
 			//waitKey(0);
 			//imwrite("recognition.jpg", out_img);
 			//imwrite("segmentation.jpg", out_img_segmentation);
 			//imwrite("decomposition.jpg", out_img_decomposition);
 			/* CHANGED CODE HERE **********************************************************/
+			// Restore old cout & cerr
+			cout.rdbuf(oldCoutStreamBuf);
+			cerr.rdbuf(oldCerrStreamBuf);
 			return words_detection;
 			/* END OF CHANGED CODE ********************************************************/
 		}
 	};
 	const char *arg1 = filename.c_str();
-	const char* argv[2] = { String("function call").c_str(), arg1 };
+	const char* argv[2] = { String("function-call").c_str(), arg1 };
 	return EndToEndFuncs::run_main(2, argv);
 }
 
 vector<string> EndToEndWrapper::runOCR(String filename) {
-	Mat image = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
+	cout << "Load " << filename << "..." << endl;
+	Mat rectImage = imread(filename, CV_LOAD_IMAGE_GRAYSCALE); //for finding rectangles
+	Mat image = imread(filename, CV_LOAD_IMAGE_COLOR); //for finding text
+
+	// **** Rectangle Recognition *************************************************
+	cout << "Optimizing image for rectangle recognition:" << endl;
 	//blur
+	cout << "    Applying Gaussian blur..." << endl;
 	Size kSize(15, 15);
-	GaussianBlur(image, image, kSize, 2.0, 2.0);
+	GaussianBlur(rectImage, rectImage, kSize, 2.0, 2.0);
 	//threshold
-	adaptiveThreshold(image, image, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY, 15, -2);
-	cvtColor(image, image, CV_GRAY2BGR);
+	cout << "    Performing adaptive thresholding..." << endl;
+	adaptiveThreshold(rectImage, rectImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY, 15, -2);
+	cvtColor(rectImage, rectImage, CV_GRAY2BGR);
 
 	//find squares
-	cout << "Finding rectangles " << filename << "..." << endl;
+	cout << "Finding rectangles in " << filename << "..." << endl;
 	vector<vector<Point>> squares;
-	findSquares(image, squares);
+	findSquares(rectImage, squares);
 
-	// **** discard extrema areas **********************************************
+	// **** Discard Outlier Contours **********************************************
+	cout << "Locating answer rectangles within recognition set..." << endl;
 	size_t num_squares = squares.size();
 	vector<double> areas(num_squares);
 	//find all contour areas
@@ -369,8 +360,13 @@ vector<string> EndToEndWrapper::runOCR(String filename) {
 			trimmedsquares.push_back(squares[i]);
 	squares = trimmedsquares;
 	//draw squares
-	drawSquares(image, squares);
+	//cout << "Outlining answer rectangles..." << endl;
+	//drawSquares(image, squares);
 
+	// **** OCR *******************************************************************
+	cout << "Initializing Tesseract optical character recogntion..." << endl;
+
+	//setup
 	Ptr<OCRTesseract> ocr = OCRTesseract::create();
 	string output;
 	Mat out_img;
@@ -381,47 +377,62 @@ vector<string> EndToEndWrapper::runOCR(String filename) {
 	float scale_img = 600.f / image.rows;
 	float scale_font = (float)(2 - scale_img) / 1.4f;
 	vector<string> words_detection;
+
+	//optimize image for OCR
+	cout << "Optimizing image for optical character recognition..." << endl;
+	kSize = Size(7, 7);
+	GaussianBlur(out_img, out_img, kSize, 2.0, 2.0);
+	bitwise_not(out_img, out_img);  // Color inversion
+
+	cout << "Reformatting search areas..." << endl;
+	//initialize answers
 	vector<Rect> answers;
-	vector< vector<Vec2i> > answerlocations;
-
-	for (int i = 0; i < (int)answers.size(); i++)
-	{
-		rectangle(out_img_detection, answers[i].tl(), answers[i].br(), Scalar(0, 255, 255), 3);
-
-		Mat group_img = Mat::zeros(image.rows + 2, image.cols + 2, CV_8UC1);
-		Mat group_segmentation;
-		group_img.copyTo(group_segmentation);
-		//image(answers[i]).copyTo(group_img);
-		group_img(answers[i]).copyTo(group_img);
-		copyMakeBorder(group_img, group_img, 15, 15, 15, 15, BORDER_CONSTANT, Scalar(0));
-
-		vector<Rect>   boxes;
-		vector<string> words;
-		vector<float>  confidences;
-		ocr->run(group_img, output, &boxes, &words, &confidences, OCR_LEVEL_WORD);
-
-		output.erase(remove(output.begin(), output.end(), '\n'), output.end());
-		//cout << "OCR output = \"" << output << "\" lenght = " << output.size() << endl;
-
-
-		for (int j = 0; j < (int)boxes.size(); j++)
-		{
-			boxes[j].x += answers[i].x - 15;
-			boxes[j].y += answers[i].y - 15;
-
-			//cout << "  word = " << words[j] << "\t confidence = " << confidences[j] << endl;
-			if ((words[j].size() < 2) || (confidences[j] < 51) ||
-				((words[j].size() == 2) && (words[j][0] == words[j][1])) ||
-				((words[j].size() < 4) && (confidences[j] < 60)))
-				continue;
-			words_detection.push_back(words[j]);
-			rectangle(out_img, boxes[j].tl(), boxes[j].br(), Scalar(255, 0, 255), 3);
-			Size word_size = getTextSize(words[j], FONT_HERSHEY_SIMPLEX, (double)scale_font, (int)(3 * scale_font), NULL);
-			rectangle(out_img, boxes[j].tl() - Point(3, word_size.height + 3), boxes[j].tl() + Point(word_size.width, 0), Scalar(255, 0, 255), -1);
-			putText(out_img, words[j], boxes[j].tl() - Point(1, 1), FONT_HERSHEY_SIMPLEX, scale_font, Scalar(255, 255, 255), (int)(3 * scale_font));
-			out_img_segmentation = out_img_segmentation | group_segmentation;
+	vector<Point> cur;
+	Rect currentRect, testRect;
+	Point tl;
+	int height, width;
+	bool insert = false;
+	for (int i = 0; i < squares.size(); i++) {
+		cur = squares[i];
+		currentRect = boundingRect(cur);
+		if (answers.size() == 0) {
+			answers.push_back(currentRect);
 		}
+		else {
+			insert = true;
+			for (int j = 0; j < answers.size(); j++) {
+				testRect = answers[j] & currentRect;
+				if (testRect.area() > 0) insert = false;
+			}
+			if (insert) {
+				answers.push_back(currentRect);
+				insert = false;
+			}
+		}
+
 	}
+
+	cout << "Performing optical character recognition:" << endl;
+	Mat input;
+	String inputfile, returnWord;
+	ostringstream oss;
+	std::cout << oss.str();
+	for (int i = answers.size() - 1; i >= 0; i--) {
+		input = out_img(answers[i]);
+		resize(input, input, Size(0,0), 2.0, 2.0);
+		oss << "input" << answers.size() - 1 - i << ".JPG";
+		inputfile = oss.str();
+		cout << "    Evaluating " << inputfile << "..." << endl;
+		imwrite(inputfile, input);
+		vector<string> result = run(inputfile);
+		returnWord = "";
+		for (int part = 0; part < result.size(); part++)
+			returnWord += result[part];
+		words_detection.push_back(returnWord);
+		oss.clear();//clear any bits set
+		oss.str(std::string());
+	}
+	
 	return words_detection;
 }
 
@@ -529,90 +540,4 @@ void EndToEndWrapper::drawSquares(Mat& image, const vector<vector<Point> >& squa
 		int n = (int)squares[i].size();
 		polylines(image, &p, &n, 1, true, Scalar(0, 255, 0), 3, LINE_AA);
 	}
-}
-
-void EndToEndWrapper::greenScreen(String foregroundFilename)
-{
-	const int HIST_DIMENS_SIZE = 4; //size of cubic 3D histogram in one direction
-	const int COLOR_VALUES = 256; //number of values for any color channel {r, g, b}
-	const int BUCKET_SIZE = COLOR_VALUES / HIST_DIMENS_SIZE; //number of colors assigned
-															 //to each histogram bucket
-	const int COLOR_CHANNELS = 3; //number of channels in an RGB image
-
-	Mat foreground = imread(foregroundFilename);
-
-	//create 3D histogram of integers initialized to zero, dimensions are r, g, and b
-	int dims[] = { HIST_DIMENS_SIZE, HIST_DIMENS_SIZE, HIST_DIMENS_SIZE };
-	Mat hist(3, dims, CV_32S, Scalar::all(0));
-
-	//increment buckets in histogram based on image color data
-	int r, g, b;
-	uchar* fg_rowptr = nullptr;
-	int total_fg_channels = foreground.cols * COLOR_CHANNELS;
-	for (int row = 0; row < foreground.rows; row++) {
-		//get pointer to row in foreground image
-		fg_rowptr = foreground.ptr<uchar>(row);
-		//iterate over pixels (sets of 3 channels) and increment the appropriate bucket
-		for (int channel = 0; channel < total_fg_channels; channel += COLOR_CHANNELS) {
-			r = fg_rowptr[channel + 2] / BUCKET_SIZE;
-			g = fg_rowptr[channel + 1] / BUCKET_SIZE;
-			b = fg_rowptr[channel] / BUCKET_SIZE;
-			hist.at<int>(r, g, b)++;
-		}
-	}
-
-	//find cell with most votes (uses darker cell in a tie)
-	int max_r, max_g, max_b, max_votes, test;
-	max_r = max_g = max_b = max_votes = test = 0;
-	for (r = 0; r < HIST_DIMENS_SIZE; r++) {
-		for (g = 0; g < HIST_DIMENS_SIZE; g++) {
-			for (b = 0; b < HIST_DIMENS_SIZE; b++) {
-				test = hist.at<int>(r, g, b);
-				if (test > max_votes) {
-					max_votes = test;
-					max_r = r;
-					max_g = g;
-					max_b = b;
-				}
-			}
-		}
-	}
-
-	//calculate color w/ most votes based on cell count
-	int bg_r = max_r * BUCKET_SIZE + BUCKET_SIZE / 2;
-	int bg_g = max_g * BUCKET_SIZE + BUCKET_SIZE / 2;
-	int bg_b = max_b * BUCKET_SIZE + BUCKET_SIZE / 2;
-
-	// **** PART 1B: replace most common color w/ background image *************
-	//setup
-	fg_rowptr = nullptr;
-	uchar* bg_rowptr = nullptr;
-
-	//iterate over entire foreground image
-	for (int row = 0; row < foreground.rows; row++) {
-		//get pointer to row in foreground image and corresponding row
-		//in background image; handles background images that are smaller
-		//than their foreground images (handles rows here, columns later)
-		fg_rowptr = foreground.ptr<uchar>(row);
-		//iterate over pixels (sets of 3 channels) and increment the appropriate bucket
-		for (int channel = 0; channel < total_fg_channels; channel += COLOR_CHANNELS) {
-			//if pixel in foreground image is within BUCKET_SIZE of the calculated
-			//'most common color' in all color bands
-			if (fg_rowptr[channel] >= bg_b - BUCKET_SIZE &&
-				fg_rowptr[channel] <= bg_b + BUCKET_SIZE && //is blue within range
-				fg_rowptr[channel + 1] >= bg_g - BUCKET_SIZE &&
-				fg_rowptr[channel + 1] <= bg_g + BUCKET_SIZE && //is green within range
-				fg_rowptr[channel + 2] >= bg_r - BUCKET_SIZE &&
-				fg_rowptr[channel + 2] <= bg_r + BUCKET_SIZE) { //is red within range
-
-			//set foreground pixel to white
-				fg_rowptr[channel] = 255;
-				fg_rowptr[channel + 1] = 255;
-				fg_rowptr[channel + 2] = 255;
-			}
-		}
-	}
-
-	// create output file for green-screen effect
-	imwrite("afterGreenScreen.jpg", foreground);
 }
