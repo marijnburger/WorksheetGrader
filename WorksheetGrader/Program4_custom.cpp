@@ -309,5 +309,5 @@
 //	}
 //
 //	// create output file
-//	imwrite("moreContrast.jpg", sharpImage;
+//	imwrite("moreContrast.jpg", sharpImage);
 //}

@@ -25,10 +25,17 @@ using namespace cv::text;
 
 class EndToEndWrapper
 {
+private:
+	int thresh = 50, N = 11;
 public:
 	EndToEndWrapper();
 	~EndToEndWrapper();
 
 	//wraps 'end_to_end_recognition.cpp'
 	vector<string> run(String filename);
+	void normalizeBG(String filename);
+	void thresholdImage(String filename);
+	void EndToEndWrapper::findRectangles(const Mat& image, vector<vector<Point> >& rectangles);
+	void EndToEndWrapper::drawRectangles(Mat& image, const vector<vector<Point> >& squares);
+	vector<string> runOCR(String filename);
 };

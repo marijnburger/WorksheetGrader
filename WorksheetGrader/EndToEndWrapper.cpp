@@ -320,3 +320,218 @@ vector<string> EndToEndWrapper::run(String filename) {
 	const char* argv[2] = { String("function call").c_str(), arg1 };
 	return EndToEndFuncs::run_main(2, argv);
 }
+
+//outputs normalizedBG.JPG
+void EndToEndWrapper::normalizeBG(String filename)
+{
+	const int HIST_DIMENS_SIZE = 4; //size of cubic 3D histogram in one direction
+	const int COLOR_VALUES = 256; //number of values for any color channel {r, g, b}
+	const int BUCKET_SIZE = COLOR_VALUES / HIST_DIMENS_SIZE; //number of colors assigned
+															 //to each histogram bucket
+	const int COLOR_CHANNELS = 3; //number of channels in an RGB image
+	const uchar WHITE = '255';
+
+	//read background, foreground
+	Mat_<Vec3b> image = imread(filename);
+
+	//create 3D histogram of integers initialized to zero, dimensions are r, g, and b
+	int dims[] = { HIST_DIMENS_SIZE, HIST_DIMENS_SIZE, HIST_DIMENS_SIZE };
+	Mat hist(3, dims, CV_32S, Scalar::all(0));
+
+	//increment buckets in histogram based on image color data
+	int r, g, b;
+	uchar* fg_rowptr = nullptr;
+	int total_fg_channels = image.cols * COLOR_CHANNELS;
+	for (int row = 0; row < image.rows; row++) {
+		//get pointer to row in foreground image
+		fg_rowptr = image.ptr<uchar>(row);
+		//iterate over pixels (sets of 3 channels) and increment the appropriate bucket
+		for (int channel = 0; channel < total_fg_channels; channel += COLOR_CHANNELS) {
+			r = fg_rowptr[channel + 2] / BUCKET_SIZE;
+			g = fg_rowptr[channel + 1] / BUCKET_SIZE;
+			b = fg_rowptr[channel] / BUCKET_SIZE;
+			hist.at<int>(r, g, b)++;
+		}
+	}
+
+	//find cell with most votes (uses darker cell in a tie)
+	int max_r, max_g, max_b, max_votes, test;
+	max_r = max_g = max_b = max_votes = test = 0;
+	for (r = 0; r < HIST_DIMENS_SIZE; r++) {
+		for (g = 0; g < HIST_DIMENS_SIZE; g++) {
+			for (b = 0; b < HIST_DIMENS_SIZE; b++) {
+				test = hist.at<int>(r, g, b);
+				if (test > max_votes) {
+					max_votes = test;
+					max_r = r;
+					max_g = g;
+					max_b = b;
+				}
+			}
+		}
+	}
+
+	//calculate color w/ most votes based on cell count
+	int bg_r = max_r * BUCKET_SIZE + BUCKET_SIZE / 2;
+	int bg_g = max_g * BUCKET_SIZE + BUCKET_SIZE / 2;
+	int bg_b = max_b * BUCKET_SIZE + BUCKET_SIZE / 2;
+
+	//setup
+	fg_rowptr = nullptr;
+	uchar* bg_rowptr = nullptr;
+
+	//iterate over entire foreground image
+	for (int row = 0; row < image.rows; row++) {
+		//get pointer to row in foreground image and corresponding row
+		//in background image; handles background images that are smaller
+		//than their foreground images (handles rows here, columns later)
+		fg_rowptr = image.ptr<uchar>(row);
+		//iterate over pixels (sets of 3 channels) and increment the appropriate bucket
+		for (int channel = 0; channel < total_fg_channels; channel += COLOR_CHANNELS) {
+			//if pixel in foreground image is within BUCKET_SIZE of the calculated
+			//'most common color' in all color bands
+			if (fg_rowptr[channel] >= bg_b - BUCKET_SIZE &&
+				fg_rowptr[channel] <= bg_b + BUCKET_SIZE && //is blue within range
+				fg_rowptr[channel + 1] >= bg_g - BUCKET_SIZE &&
+				fg_rowptr[channel + 1] <= bg_g + BUCKET_SIZE && //is green within range
+				fg_rowptr[channel + 2] >= bg_r - BUCKET_SIZE &&
+				fg_rowptr[channel + 2] <= bg_r + BUCKET_SIZE) { //is red within range
+			//set foreground pixel to corresponding background pixel
+				fg_rowptr[channel] = WHITE;
+				fg_rowptr[channel + 1] = WHITE;
+				fg_rowptr[channel + 2] = WHITE;
+			}
+		}
+	}
+
+	//save & display to screen
+	imwrite("normalizedBG.JPG", image); //save resulting image as 'normalizedBG.jpg'
+}
+
+//outputs threshold.JPG
+void EndToEndWrapper::thresholdImage(String filename)
+{
+	Mat_<Vec3b> image = imread(filename);
+	Mat thr(image.rows, image.cols, CV_8UC1);
+	cvtColor(image, thr, CV_BGR2GRAY); //Convert to gray
+	threshold(thr, thr, 25, 255, THRESH_BINARY); //Threshold the gray
+	imwrite("threshold.JPG", thr);
+}
+
+// returns sequence of rectangles detected on the image.
+// the sequence is stored in the specified memory storage
+void EndToEndWrapper::findRectangles(const Mat& image, vector<vector<Point> >& rectangles)
+{
+	rectangles.clear();
+
+	Mat pyr, timg, gray0(image.size(), CV_8U), gray;
+
+	// down-scale and upscale the image to filter out the noise
+	pyrDown(image, pyr, Size(image.cols / 2, image.rows / 2));
+	pyrUp(pyr, timg, image.size());
+	vector<vector<Point> > contours;
+
+	// find rectangles in every color plane of the image
+	for (int c = 0; c < 3; c++)
+	{
+		int ch[] = { c, 0 };
+		mixChannels(&timg, 1, &gray0, 1, ch, 1);
+
+		// try several threshold levels
+		for (int l = 0; l < N; l++)
+		{
+			// hack: use Canny instead of zero threshold level.
+			// Canny helps to catch rectangles with gradient shading
+			if (l == 0)
+			{
+				// apply Canny. Take the upper threshold from slider
+				// and set the lower to 0 (which forces edges merging)
+				Canny(gray0, gray, 0, thresh, 5);
+				// dilate canny output to remove potential
+				// holes between edge segments
+				dilate(gray, gray, Mat(), Point(-1, -1));
+			}
+			else
+			{
+				// apply threshold if l!=0:
+				//     tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
+				gray = gray0 >= (l + 1) * 255 / N;
+			}
+
+			// find contours and store them all as a list
+			findContours(gray, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
+
+			vector<Point> approx;
+
+			// test each contour
+			for (size_t i = 0; i < contours.size(); i++)
+			{
+				// approximate contour with accuracy proportional
+				// to the contour perimeter
+				approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*0.02, true);
+
+				// square contours should have 4 vertices after approximation
+				// relatively large area (to filter out noisy contours)
+				// and be convex.
+				// Note: absolute value of an area is used because
+				// area may be positive or negative - in accordance with the
+				// contour orientation
+				if (approx.size() == 4 &&
+					fabs(contourArea(Mat(approx))) > 1000 &&
+					isContourConvex(Mat(approx)))
+				{
+					double maxCosine = 0;
+
+					for (int j = 2; j < 5; j++)
+					{
+						// find the maximum cosine of the angle between joint edges
+						Point pt1, pt2, pt0;
+						pt1 = approx[j % 4];
+						pt2 = approx[j - 2];
+						pt0 = approx[j - 1];
+						double dx1 = pt1.x - pt0.x;
+						double dy1 = pt1.y - pt0.y;
+						double dx2 = pt2.x - pt0.x;
+						double dy2 = pt2.y - pt0.y;
+						double angle = (dx1*dx2 + dy1*dy2) / sqrt((dx1*dx1 + dy1*dy1)*(dx2*dx2 + dy2*dy2) + 1e-10);
+						double cosine = fabs(angle);
+						maxCosine = MAX(maxCosine, cosine);
+					}
+
+					// if cosines of all angles are small
+					// (all angles are ~90 degree) then write quandrange
+					// vertices to resultant sequence
+					if (maxCosine < 0.3)
+						rectangles.push_back(approx);
+				}
+			}
+		}
+	}
+}
+
+// the function draws all the squares in the image
+void EndToEndWrapper::drawRectangles(Mat& image, const vector<vector<Point> >& rectangles)
+{
+	for (size_t i = 0; i < rectangles.size(); i++)
+	{
+		const Point* p = &rectangles[i][0];
+		int n = (int)rectangles[i].size();
+		polylines(image, &p, &n, 1, true, Scalar(0, 255, 0), 3, LINE_AA);
+	}
+}
+
+vector<string> EndToEndWrapper::runOCR(String filename)
+{
+	vector<vector<Point> > rectangles;
+	normalizeBG(filename); // makes normalized.JPG
+	thresholdImage("normalized.JPG"); // makes threshold.JPG
+	Mat image = imread("threshold.JPG");
+
+	findRectangles(image, rectangles);
+	drawRectangles(image, rectangles);
+	
+	namedWindow("Rectangles", WINDOW_NORMAL);
+	imshow("Rectangles", image);
+	waitKey(0);
+	return vector<string>();
+}
