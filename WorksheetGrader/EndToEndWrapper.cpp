@@ -329,7 +329,7 @@ void EndToEndWrapper::normalizeBG(String filename)
 	const int BUCKET_SIZE = COLOR_VALUES / HIST_DIMENS_SIZE; //number of colors assigned
 															 //to each histogram bucket
 	const int COLOR_CHANNELS = 3; //number of channels in an RGB image
-	const uchar WHITE = '255';
+	const uchar WHITE = 255;
 
 	//read background, foreground
 	Mat_<Vec3b> image = imread(filename);
@@ -405,7 +405,7 @@ void EndToEndWrapper::normalizeBG(String filename)
 	}
 
 	//save & display to screen
-	imwrite("normalizedBG.JPG", image); //save resulting image as 'normalizedBG.jpg'
+	imwrite(filename, image);
 }
 
 //outputs threshold.JPG
@@ -414,8 +414,8 @@ void EndToEndWrapper::thresholdImage(String filename)
 	Mat_<Vec3b> image = imread(filename);
 	Mat thr(image.rows, image.cols, CV_8UC1);
 	cvtColor(image, thr, CV_BGR2GRAY); //Convert to gray
-	threshold(thr, thr, 25, 255, THRESH_BINARY); //Threshold the gray
-	imwrite("threshold.JPG", thr);
+	threshold(thr, thr, 150, 255, THRESH_BINARY); //Threshold the gray
+	imwrite(filename, thr);
 }
 
 // returns sequence of rectangles detected on the image.
@@ -522,16 +522,39 @@ void EndToEndWrapper::drawRectangles(Mat& image, const vector<vector<Point> >& r
 
 vector<string> EndToEndWrapper::runOCR(String filename)
 {
-	vector<vector<Point> > rectangles;
-	normalizeBG(filename); // makes normalized.JPG
-	thresholdImage("normalized.JPG"); // makes threshold.JPG
-	Mat image = imread("threshold.JPG");
-
-	findRectangles(image, rectangles);
-	drawRectangles(image, rectangles);
+	Mat image = imread(filename);
 	
-	namedWindow("Rectangles", WINDOW_NORMAL);
-	imshow("Rectangles", image);
+	cout << "Blurring image..." << endl;
+	Size kSize(7, 7);
+	GaussianBlur(image, image, kSize, 2.0, 2.0);
+	image = imread(filename);
+	namedWindow("Rectangles0", WINDOW_NORMAL);
+	imshow("Rectangles0", image);
+	waitKey(0);
+
+	vector<vector<Point> > rectangles;
+	cout << "Thresholding image..." << endl;
+	thresholdImage(filename); // makes threshold.JPG
+	image = imread(filename);
+	namedWindow("Rectangles1", WINDOW_NORMAL);
+	imshow("Rectangles1", image);
+	waitKey(0);
+
+	cout << "Normalizing image..." << endl;
+	normalizeBG(filename);
+	image = imread(filename);
+	namedWindow("Rectangles2", WINDOW_NORMAL);
+	imshow("Rectangles2", image);
+	waitKey(0);
+
+	cout << "Find rectangles..." << endl;
+	findRectangles(image, rectangles);
+	cout << "Draw rectangles..." << endl;
+	drawRectangles(image, rectangles);
+	imwrite("recognition.JPG", image);
+	
+	namedWindow("Rectangles3", WINDOW_NORMAL);
+	imshow("Rectangles3", image);
 	waitKey(0);
 	return vector<string>();
 }
