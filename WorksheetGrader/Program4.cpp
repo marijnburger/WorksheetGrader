@@ -35,7 +35,7 @@ float compareAnswers(String* answers, String* solutions);
 int main()
 {
 	String testFilename = "InputWorksheet.JPG";
-	String theSolution[NUMBER_OF_QUESTIONS] = { "China", "mars", "carbon" };
+	String theSolution[NUMBER_OF_QUESTIONS] = { "HOTEL", "CHINA", "Hello" };
 
 	Mat gradedPaper = imread(testFilename);
 	Mat gradedPaper2 = imread(testFilename);
