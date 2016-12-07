@@ -42,24 +42,23 @@ int main()
 
 	Size kSize(7, 7);
 	GaussianBlur(gradedPaper, gradedPaper, kSize, 2.0, 2.0);
-//	GaussianBlur(gradedPaper, gradedPaper, kSize, 2.0, 2.0);
+	//	GaussianBlur(gradedPaper, gradedPaper, kSize, 2.0, 2.0);
 
 	bitwise_not(gradedPaper, gradedPaper2);  // Color inversion
 
 	imwrite("inverseImage.JPG", gradedPaper2);
 	vector<string> outputwords;
-	
+
 	EndToEndWrapper e2e = EndToEndWrapper();
-	e2e.run("inverseImage.JPG");
-	outputwords = e2e.foundWords;
+	outputwords = e2e.run("inverseImage.JPG");
 	Mat output = imread("recognition.JPG");
 	namedWindow("recognition", WINDOW_NORMAL);
 	imshow("recognition", output);
 	waitKey(0);
-	
+
 
 	//int numberOfWordsFound = outputwords.size();
-	
+
 	cout << outputwords[0] << endl;
 	cout << outputwords[1] << endl;
 	cout << outputwords[2] << endl;
@@ -95,7 +94,7 @@ int main()
 
 	float theScore = compareAnswers(someAnswers, theSolution);
 
-//	Mat gradedPaper = imread("test5.JPG");
+	//	Mat gradedPaper = imread("test5.JPG");
 	imwrite("gradedPaper.JPG", gradedPaper);
 	assignGrade("gradedPaper.JPG", theScore);
 
@@ -128,7 +127,7 @@ void assignGrade(String theFilename, float score)
 // Compare answer to solutions and output
 // number of matches as an int
 float compareAnswers(String* answers, String* solutions)
-{	
+{
 	float count = 0.0;
 	for (int i = 0; i < NUMBER_OF_QUESTIONS; i++)
 	{
