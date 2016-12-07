@@ -338,13 +338,13 @@ vector<string> EndToEndWrapper::runOCR(String filename) {
 	Size kSize(15, 15);
 	GaussianBlur(image, image, kSize, 2.0, 2.0);
 	//threshold
-	adaptiveThreshold(image, image, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY, 15, -5);
+	adaptiveThreshold(image, image, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY, 15, -2);
 	cvtColor(image, image, CV_GRAY2BGR);
+
+	//find squares
 	cout << "Finding rectangles " << filename << "..." << endl;
 	vector<vector<Point>> squares;
-	//find squares
 	findSquares(image, squares);
-	cout << "Found " << squares.size() << " rectangles." << endl;
 
 	// **** discard extrema areas **********************************************
 	size_t num_squares = squares.size();
@@ -370,7 +370,6 @@ vector<string> EndToEndWrapper::runOCR(String filename) {
 	squares = trimmedsquares;
 	//draw squares
 	drawSquares(image, squares);
-	cout << "Kept " << squares.size() << " rectangles." << endl;
 
 	Ptr<OCRTesseract> ocr = OCRTesseract::create();
 	string output;
