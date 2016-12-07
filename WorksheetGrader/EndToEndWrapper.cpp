@@ -1,3 +1,12 @@
+
+// EndToEndWrapper
+// CSS 487 Project
+
+// Marijn Burger
+// Jack Eldridge
+
+// Uses end_to_end_recognition.cpp from OpenCV
+// Sample code
 #include "EndToEndWrapper.h"
 
 EndToEndWrapper::EndToEndWrapper()
@@ -315,7 +324,7 @@ vector<string> EndToEndWrapper::run(String filename) {
 	return EndToEndFuncs::run_main(2, argv);
 }
 
-vector<string> EndToEndWrapper::runOCR(String filename) {
+vector<string> EndToEndWrapper::runTargeted(String filename) {
 	cout << "Load " << filename << "..." << endl;
 	Mat rectImage = imread(filename, CV_LOAD_IMAGE_GRAYSCALE); //for finding rectangles
 	Mat image = imread(filename, CV_LOAD_IMAGE_COLOR); //for finding text

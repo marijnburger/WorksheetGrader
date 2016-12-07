@@ -1,5 +1,15 @@
 #pragma once
-//TODO cite:
+
+// EndToEndWrapper
+// CSS 487 Project
+
+// Marijn Burger
+// Jack Eldridge
+
+// Uses end_to_end_recognition.cpp from OpenCV
+// Sample code
+
+// Original file's header below:
 /*
 * end_to_end_recognition.cpp
 *
@@ -35,7 +45,7 @@ public:
 	//wraps 'end_to_end_recognition.cpp'
 	vector<string> run(String filename);
 
-	vector<string> runOCR(String filename);
+	vector<string> runTargeted(String filename);
 private:
 	double angle(Point pt1, Point pt2, Point pt0);
 	void findSquares(const Mat& image, vector<vector<Point> >& squares);

@@ -43,7 +43,7 @@ int main()
 	vector<string> outputwords;
 
 	EndToEndWrapper e2e = EndToEndWrapper();
-	outputwords = e2e.runOCR("InputWorksheet.JPG");
+	outputwords = e2e.runTargeted("InputWorksheet.JPG");
 	Mat output = imread("input0.JPG");
 	namedWindow("Answer 1", WINDOW_NORMAL);
 	imshow("Answer 1", output);
