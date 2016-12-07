@@ -18,6 +18,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <math.h>
 
 using namespace std;
 using namespace cv;
@@ -26,16 +27,18 @@ using namespace cv::text;
 class EndToEndWrapper
 {
 private:
-	int thresh = 50, N = 11;
+	const int thresh = 50, N = 11;
 public:
 	EndToEndWrapper();
 	~EndToEndWrapper();
 
 	//wraps 'end_to_end_recognition.cpp'
 	vector<string> run(String filename);
-	void normalizeBG(String filename);
-	void thresholdImage(String filename);
-	void EndToEndWrapper::findRectangles(const Mat& image, vector<vector<Point> >& rectangles);
-	void EndToEndWrapper::drawRectangles(Mat& image, const vector<vector<Point> >& squares);
+
 	vector<string> runOCR(String filename);
+private:
+	double angle(Point pt1, Point pt2, Point pt0);
+	void findSquares(const Mat& image, vector<vector<Point> >& squares);
+	void drawSquares(Mat& image, const vector<vector<Point> >& squares);
+	void EndToEndWrapper::greenScreen(String foregroundFilename);
 };
