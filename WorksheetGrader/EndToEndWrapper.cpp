@@ -334,18 +334,43 @@ vector<string> EndToEndWrapper::run(String filename) {
 
 vector<string> EndToEndWrapper::runOCR(String filename) {
 	Mat image = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
+	//blur
 	Size kSize(15, 15);
 	GaussianBlur(image, image, kSize, 2.0, 2.0);
+	//threshold
 	adaptiveThreshold(image, image, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY, 15, -5);
 	cvtColor(image, image, CV_GRAY2BGR);
 	cout << "Finding rectangles " << filename << "..." << endl;
 	vector<vector<Point>> squares;
+	//find squares
 	findSquares(image, squares);
-	drawSquares(image, squares);
 	cout << "Found " << squares.size() << " rectangles." << endl;
-	namedWindow("recognition.JPG", WINDOW_NORMAL);
-	imshow("recognition.JPG", image);
-	imwrite("recognition.JPG", image);
+
+	// **** discard extrema areas **********************************************
+	size_t num_squares = squares.size();
+	vector<double> areas(num_squares);
+	//find all contour areas
+	for (int i = 0; i < num_squares; i++) {
+		areas[i] = contourArea(squares[i]);
+	}
+
+	//find low/high boundaries for area (middle 60% is kept)
+	vector<double> sortedareas = areas;
+	sort(sortedareas.begin(), sortedareas.end());
+	int twentypercent = num_squares / 5;
+	double low, high;
+	low = sortedareas[twentypercent]; //excluded if < low
+	high = sortedareas[num_squares - twentypercent]; //excluded if >= high
+
+	//keep valid squares
+	vector<vector<Point>> trimmedsquares = vector<vector<Point>>();
+	for (int i = 0; i < num_squares; i++)
+		if (areas[i] >= low && areas[i] < high) 
+			trimmedsquares.push_back(squares[i]);
+	squares = trimmedsquares;
+	//draw squares
+	drawSquares(image, squares);
+	cout << "Kept " << squares.size() << " rectangles." << endl;
 
 	Ptr<OCRTesseract> ocr = OCRTesseract::create();
 	string output;
